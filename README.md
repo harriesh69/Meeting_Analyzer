@@ -37,7 +37,7 @@ Running t5 over the extractive output rather than the full transcript keeps the 
 Requires Python 3.10 and ffmpeg on your PATH.
 
 ```bash
-git clone https://github.com/tharunn04/meeting-analyzer.git
+git clone https://github.com/harriesh69/Meeting_Analyzer
 cd meeting-analyzer
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
