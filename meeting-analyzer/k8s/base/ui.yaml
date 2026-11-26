@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: ui}
+  template:
+    metadata:
+      labels: {app: ui}
+    spec:
+      securityContext: {runAsNonRoot: true}
+      containers:
+        - name: ui
+          image: meeting-analyzer-ui
+          env: [{name: API_URL, value: "http://api:8000"}]
+          ports: [{containerPort: 8501, name: http}]
+          readinessProbe:
+            httpGet: {path: /_stcore/health, port: http}
+          resources:
+            requests: {cpu: 50m, memory: 256Mi}
+            limits: {memory: 512Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+spec:
+  selector: {app: ui}
+  ports: [{port: 8501, targetPort: http, name: http}]

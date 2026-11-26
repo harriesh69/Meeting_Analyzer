@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: worker}
+  template:
+    metadata:
+      labels: {app: worker}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+    spec:
+      securityContext: {runAsNonRoot: true, fsGroup: 10001}
+      # On scale-down or rollout, SIGTERM lets the current job finish.
+      terminationGracePeriodSeconds: 900
+      containers:
+        - name: worker
+          image: meeting-analyzer-worker
+          envFrom: [{configMapRef: {name: analyzer-config}}]
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef: {name: hf-token, key: token, optional: true}
+          ports: [{containerPort: 9100, name: metrics}]
+          livenessProbe:
+            httpGet: {path: /metrics, port: metrics}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            # Whisper + pyannote + t5 on CPU need about 3-4 GB of memory.
+            requests: {cpu: "2", memory: 4Gi}
+            limits: {memory: 6Gi}
+          volumeMounts: [{name: models, mountPath: /models}]
+      volumes:
+        - name: models   # cache model downloads for the life of the pod
+          emptyDir: {sizeLimit: 5Gi}
+---
+# Busy workers use all their CPU, idle ones almost none, so CPU usage is a
+# reasonable scaling signal. See ../optional/keda-scaledobject.yaml for
+# scaling on queue length instead.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: worker
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: worker}
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 70}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600   # avoid killing workers between jobs

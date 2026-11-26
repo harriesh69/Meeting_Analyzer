@@ -1,0 +1,18 @@
+# Real models and public access via Ingress.
+# Images are tagged v1 and imported straight into the cluster (see
+# deploy/gcp.md). To pull from a registry instead, run e.g.
+#   kustomize edit set image meeting-analyzer-api=REGION-docker.pkg.dev/PROJECT/repo/meeting-analyzer-api:v1
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - ingress.yaml
+images:
+  - {name: meeting-analyzer-api, newTag: v1}
+  - {name: meeting-analyzer-worker, newTag: v1}
+  - {name: meeting-analyzer-ui, newTag: v1}
+patches:
+  # One 4-vCPU VM fits one worker; raise this on a bigger node or cluster.
+  - target: {kind: HorizontalPodAutoscaler, name: worker}
+    patch: |-
+      - {op: replace, path: /spec/maxReplicas, value: 1}

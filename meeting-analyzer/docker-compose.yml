@@ -1,0 +1,39 @@
+# Full stack on one machine.
+#   echo "HF_TOKEN=hf_..." > .env       # needed for the pyannote model
+#   docker compose up --build
+#   UI:  http://localhost:8501     API docs: http://localhost:8000/docs
+# For a quick try without models: ANALYZER_BACKEND=fake docker compose up --build
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redis-data:/data]
+
+  api:
+    build: {context: ., dockerfile: docker/api.Dockerfile}
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8000:8000"]
+    depends_on: [redis]
+
+  worker:
+    build: {context: ., dockerfile: docker/worker.Dockerfile}
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      ANALYZER_BACKEND: ${ANALYZER_BACKEND:-real}
+      HF_TOKEN: ${HF_TOKEN:-}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+    volumes: [model-cache:/models]   # models download once, not on every restart
+    depends_on: [redis]
+    stop_grace_period: 15m           # let a running job finish on shutdown
+
+  ui:
+    build: {context: ., dockerfile: docker/ui.Dockerfile}
+    environment:
+      API_URL: http://api:8000
+    ports: ["8501:8501"]
+    depends_on: [api]
+
+volumes:
+  redis-data:
+  model-cache:

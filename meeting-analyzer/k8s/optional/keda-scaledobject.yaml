@@ -1,0 +1,19 @@
+# Optional: scale workers on queue length instead of CPU, using KEDA
+# (https://keda.sh). Install KEDA, delete the worker HPA, then apply this.
+# Scales to zero when the queue is empty, which saves cost on a cloud cluster.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker
+  namespace: meeting-analyzer
+spec:
+  scaleTargetRef: {name: worker}
+  minReplicaCount: 0
+  maxReplicaCount: 4
+  cooldownPeriod: 600
+  triggers:
+    - type: redis
+      metadata:
+        address: redis.meeting-analyzer.svc.cluster.local:6379
+        listName: ma:queue
+        listLength: "1"   # one waiting job per worker

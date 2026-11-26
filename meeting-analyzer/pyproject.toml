@@ -1,0 +1,10 @@
+[tool.ruff]
+line-length = 110
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = ["B008"]   # File(...) / Form(...) defaults are how FastAPI declares parameters
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

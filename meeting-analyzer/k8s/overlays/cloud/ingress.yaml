@@ -1,0 +1,17 @@
+# Routes /v1, /docs, /healthz to the API and everything else to the UI.
+# k3s ships with Traefik, which serves Ingress objects out of the box.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: meeting-analyzer
+  annotations:
+    # Uploads up to MAX_UPLOAD_MB need a larger body limit on nginx-based ingress.
+    nginx.ingress.kubernetes.io/proxy-body-size: 60m
+spec:
+  rules:
+    - http:
+        paths:
+          - {path: /v1, pathType: Prefix, backend: {service: {name: api, port: {number: 8000}}}}
+          - {path: /docs, pathType: Prefix, backend: {service: {name: api, port: {number: 8000}}}}
+          - {path: /openapi.json, pathType: Exact, backend: {service: {name: api, port: {number: 8000}}}}
+          - {path: /, pathType: Prefix, backend: {service: {name: ui, port: {number: 8501}}}}
